@@ -1,0 +1,299 @@
+---
+title: "Analysis of Grocery Dataset"
+author: "Students 2CS2"
+date: "26/1/2021"
+output: 
+  html_document: 
+    number_sections: true
+    toc: true
+---
+
+---
+title: "Analysis of Grocery Dataset"
+author: "Students 2CS2"
+date: "26/1/2021"
+output: 
+  html_document: 
+    number_sections: true
+    toc: true
+---
+libraryທີ່ເຮົາຈະຕອ້ງໃຊ້
+```{r}
+library(tidyverse)
+library(lubridate)
+library(arules)
+library(arulesViz) 
+library(scales)
+library(knitr)
+library(dplyr)
+library(plotly)
+```
+
+
+ເປີດເອກະສານທີ່ເຮົາຈະໃຊ້ວິເຄາະ ແລະ ເບິ່ງເອກະສານ
+```{r}
+grocery <- read_csv("groceries.csv")
+View(grocery)
+```
+
+ດຶງເອົາຂໍ້ມູນຂອງເຮົາມາລຽງລຳດັບ ແລະ ນັບຂໍ້ມູນທັງໝົດ
+
+```{r}
+counts <- count(grocery, grocery$item)
+names(counts) <- c("item", "n")
+sortedCounts <- counts[order(-counts$n),]
+```
+
+ນຳເອົາຂໍ້ມູນສິນຄ້າເທື່ອລະ50ລາຍການທີ່ໄດ້ຂາຍມາສະແດງ
+
+```{r}
+product1 <- sortedCounts[1:50,]
+ggplot(data = product1, aes(x = item,y = n,fill = item), label=TRUE) +
+    geom_bar(stat = "identity") +
+    labs(title = "Example of 50 Produce purchased", y = "Number of purchases") +
+    coord_flip() +
+    theme_minimal()
+```
+
+ເອົາຂໍ້ມູນສິນຄ້າທີ່ໄດ້ຮັບຄວາມນິຍົມ
+
+```{r}
+topTen <- sortedCounts[1:10,]
+revTopTen <- sortedCounts[10:1,]
+topTen$item <- factor(topTen$item, levels = revTopTen$item)
+ggplot(data = topTen, aes(x = item,y = n,fill = item), label=TRUE) +
+    geom_bar(stat = "identity") +
+    labs(title = "Top 10 items purchased", y = "Number of purchases") +
+    coord_flip() +
+    geom_text(aes(label = n))
+```
+
+```{r}
+
+####################################################
+su <- filter(grocery,weekday == "Sunday")
+mo <- filter(grocery,weekday == "Monday")
+tu <- filter(grocery,weekday == "Tuesday")
+we <- filter(grocery,weekday == "Wednesday")
+th <- filter(grocery,weekday == "Thursday")
+fr <- filter(grocery,weekday == "Friday" )
+sa <- filter(grocery,weekday == "Saturday")
+weekk <- rbind(su,mo,tu,we,th,fr,sa)
+weekk <- count(weekk,weekk$weekday)
+names(weekk) <- c("weekday","n")
+weekk$week <- c(6,2,7,1,5,3,4)
+weekk <- weekk[order(weekk$week),]
+weekk <- weekk[2:3]
+weekk <- weekk %>% mutate(week=factor(week, levels = c(1,2,3,4,5,6,7), labels = c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")))
+ggplot(weekk,aes(week,n,fill=week))+geom_bar(stat = "identity")+
+  coord_cartesian(ylim = c(5200,5700))+
+  labs(title = "Products for week",y = "Number of purchases") +
+  geom_text(aes(label = n))
+```
+
+
+```{r}
+mont <- count(grocery,grocery$month)
+names(mont) <- c("month","n")
+mont <- mont %>% mutate(month=factor(month, levels = c(1,2,3,4,5,6,7,8,9,10,11,12), labels = c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")))
+ggplot(mont,aes(month,n,fill=month))+geom_bar(stat = "identity")+
+  coord_cartesian(ylim = c(2500,3700))+
+  labs(title = "Products for months",y = "Number of purchases") +
+  geom_text(aes(label = n))
+```
+
+````{r}
+milk <- grocery[grocery$item == "whole milk",-c(1,2,3,5)]
+vegOther <- grocery[grocery$item == "other vegetables",-c(1,2,3,5)]
+rolls <- grocery[grocery$item == "rolls/buns",-c(1,2,3,5)]
+soda <- grocery[grocery$item == "soda",-c(1,2,3,5)]
+yogurt <- grocery[grocery$item == "yogurt",-c(1,2,3,5)]
+vegRoot <- grocery[grocery$item == "root vegetables",-c(1,2,3,5)]
+fruitTrop <- grocery[grocery$item == "tropical fruit",-c(1,2,3,5)]
+water <- grocery[grocery$item == "bottled water",-c(1,2,3,5)]
+sausage <- grocery[grocery$item == "sausage",-c(1,2,3,5)]
+fruitCitrus <- grocery[grocery$item == "citrus fruit",-c(1,2,3,5)]
+groupByweek <- function(x) {
+    x %>%
+        group_by(weekday) %>%
+        dplyr::summarize(num = n())
+}
+seriesMilk <- groupByweek(milk)
+seriesVegOther <- groupByweek(vegOther)
+seriesRolls <- groupByweek(rolls)
+seriesSoda <- groupByweek(soda)
+seriesYogurt <- groupByweek(yogurt)
+seriesVegRoot <- groupByweek(vegRoot)
+seriesFruitTrop <- groupByweek(fruitTrop)
+seriesWater <- groupByweek(water)
+seriesSausage <- groupByweek(sausage)
+seriesFruitCitrus <- groupByweek(fruitCitrus)
+widetable <- data.frame(weekday = as.numeric(c(1:7)),
+                                           milk = seriesMilk$num,
+                                           vegOther = seriesVegOther$num,
+                                           rolls = seriesRolls$num,
+                                           soda = seriesSoda$num,
+                                           yogurt = seriesYogurt$num,
+                                           vegRoot = seriesVegRoot$num,
+                                           fruitTrop = seriesFruitTrop$num,
+                                           water = seriesWater$num,
+                                           sausage = seriesSausage$num,
+                                           fruitCitrus = seriesFruitCitrus$num)
+ggplot(data = widetable, aes(x = weekday)) +
+  geom_point(aes(y = milk, color ="black")) +
+    geom_line(aes(y = milk, color = "black")) +
+    geom_line(aes(y = vegOther, color = "blue")) + 
+    geom_point(aes(y = vegOther, color = "blue")) +
+    geom_line(aes(y = rolls, color = "orange")) +
+    geom_point(aes(y = rolls, color = "orange")) +
+    geom_line(aes(y = soda, color = "red")) +
+    geom_point(aes(y = soda, color = "red")) +
+    geom_line(aes(y = yogurt, color = "cyan")) +
+    geom_point(aes(y = yogurt, color = "cyan")) +
+    geom_line(aes(y= vegRoot,color= "green"))+
+  geom_point(aes(y= vegRoot,color= "green"))+
+    geom_line(aes(y= fruitTrop,color= "purple"))+
+  geom_point(aes(y= fruitTrop,color= "purple"))+
+    geom_line(aes(y= water,color= "pink"))+
+  geom_point(aes(y= water,color= "pink"))+
+    geom_line(aes(y= sausage,color= "steelblue3"))+
+  geom_point(aes(y= sausage,color= "steelblue3"))+
+    geom_line(aes(y= fruitCitrus,color= "yellow"))+
+  geom_point(aes(y= fruitCitrus,color= "yellow"))+
+        scale_color_identity(name = "Product",
+                         breaks = c("black", "blue", "orange", "red", "cyan",
+                                    "green","purple","pink","steelblue3",
+                                    "yellow"),
+                         labels = c("Milk", "Other Vegetables", "Rolls/Buns",
+                                    "Soda", "Yogurt","Root vegetables",
+                                    "tropical fruit","bottled water",
+                                    "sausage","citrus fruit"),
+                         guide = "legend")  +
+    scale_x_continuous("weekday", 
+                       breaks = c(1:7), 
+                       labels = c("Sunday", "Monday", "Tuesday", "Wednesday",
+                               "Thursday", "Friday", "Saturday")) +
+    ylab("Number of Purchases") +
+    theme(legend.position = "none") +
+  theme_minimal()
+````
+
+````{r}
+
+####################################################
+milk <- grocery[grocery$item == "whole milk",-c(1,2,3,6)]
+vegOther <- grocery[grocery$item == "other vegetables",-c(1,2,3,6)]
+rolls <- grocery[grocery$item == "rolls/buns",-c(1,2,3,6)]
+soda <- grocery[grocery$item == "soda",-c(1,2,3,6)]
+yogurt <- grocery[grocery$item == "yogurt",-c(1,2,3,6)]
+vegRoot <- grocery[grocery$item == "root vegetables",-c(1,2,3,6)]
+fruitTrop <- grocery[grocery$item == "tropical fruit",-c(1,2,3,6)]
+water <- grocery[grocery$item == "bottled water",-c(1,2,3,6)]
+sausage <- grocery[grocery$item == "sausage",-c(1,2,3,6)]
+fruitCitrus <- grocery[grocery$item == "citrus fruit",-c(1,2,3,6)]
+groupByMonth <- function(x) {
+    x %>%
+        group_by(month) %>%
+        dplyr::summarize(num = n())
+}
+seriesMilk <- groupByMonth(milk)
+seriesVegOther <- groupByMonth(vegOther)
+seriesRolls <- groupByMonth(rolls)
+seriesSoda <- groupByMonth(soda)
+seriesYogurt <- groupByMonth(yogurt)
+seriesVegRoot <- groupByMonth(vegRoot)
+seriesFruitTrop <- groupByMonth(fruitTrop)
+seriesWater <- groupByMonth(water)
+seriesSausage <- groupByMonth(sausage)
+seriesFruitCitrus <- groupByMonth(fruitCitrus)
+wide <- data.frame(month = as.numeric(c(1:12)),
+                                           milk = seriesMilk$num,
+                                           vegOther = seriesVegOther$num,
+                                           rolls = seriesRolls$num,
+                                           soda = seriesSoda$num,
+                                           yogurt = seriesYogurt$num,
+                                           vegRoot = seriesVegRoot$num,
+                                           fruitTrop = seriesFruitTrop$num,
+                                           water = seriesWater$num,
+                                           sausage = seriesSausage$num,
+                                           fruitCitrus = seriesFruitCitrus$num)
+ggplot(data = wide, aes(x = month)) +
+    geom_line(aes(y = milk, color = "black")) +
+    geom_line(aes(y = vegOther, color = "blue")) +
+    geom_line(aes(y = rolls, color = "orange")) +
+    geom_line(aes(y = soda, color = "red")) +
+    geom_line(aes(y = yogurt, color = "cyan")) +
+    geom_point(aes(y = milk, color = "black")) + 
+    geom_point(aes(y = vegOther, color = "blue"))+
+    geom_point(aes(y = rolls, color = "orange")) +
+    geom_point(aes(y = soda, color = "red")) +
+    geom_point(aes(y = yogurt, color = "cyan")) +
+    scale_x_continuous("month", 
+                       breaks = c(1:12), 
+                       labels = month.abb) +
+    ylab("Number of Purchases") +
+    theme(legend.position = "right") +
+    scale_color_identity(name = "Product",
+                         breaks = c("black", "blue", "orange", "red", "cyan"),
+                         labels = c("Milk", "Other Vegetables", "Rolls/Buns",
+                                    "Soda", "Yogurt"),
+                         guide = "legend")
+ggplot(data = widetable, aes(x = month)) +
+    geom_line(aes(y = milk, color = "black")) +
+    geom_line(aes(y = sausage, color = "blue")) +
+    geom_line(aes(y = rolls, color = "orange")) +
+    geom_line(aes(y = soda, color = "red")) +
+    geom_line(aes(y = yogurt, color = "cyan")) +
+    geom_point(aes(y = milk, color = "black")) + 
+    geom_point(aes(y = sausage, color = "blue"))+
+    geom_point(aes(y = rolls, color = "orange")) +
+    geom_point(aes(y = soda, color = "red")) +
+    geom_point(aes(y = yogurt, color = "cyan")) +
+    scale_x_continuous("month", 
+                       breaks = c(1:12), 
+                       labels = month.abb) +
+    ylab("Number of Purchases") +
+    theme(legend.position = "right") +
+    scale_color_identity(name = "Product",
+                         breaks = c("black", "blue", "orange", "red", "cyan"),
+                         labels = c("Milk", "sausage", "Rolls/Buns",
+                                    "Soda", "Yogurt"),
+                         guide = "legend")
+````
+
+````{r}
+ggplot(data = widetable, aes(x = month)) +
+    geom_line(aes(y = vegOther, color = "green")) +
+    geom_line(aes(y = vegRoot, color = "purple")) +
+    geom_line(aes(y = meat, color = "red")) +
+    geom_line(aes(y = fruitTrop, color = "pink")) +
+    geom_line(aes(y = fruitCitrus, color = "steelblue3")) +
+    geom_point(aes(y = vegOther, color = "green")) +
+    geom_point(aes(y = vegRoot, color = "purple")) +
+    geom_point(aes(y = fruitTrop, color = "pink")) +
+    geom_point(aes(y = fruitCitrus, color = "steelblue3")) +
+    geom_point(aes(y = meat, color = "red")) +
+    scale_x_continuous("month", 
+                       breaks = c(1:12), 
+                       labels = month.abb) +
+    ylab("Number of Purchases") +
+    theme(legend.position = "right") +
+    scale_color_identity(name = "Product",
+                         breaks = c("green", "purple", "pink", "steelblue3", "red"),
+                         labels = c("Other Vegetables", "Root Vegetables", "Tropical Fruit", "Citrus Fruit", "meat"),
+                         guide = "legend")
+````
+
+````{r}
+# Create new dataset containing just transaction ids and items purchased
+groceryAssoc <- grocery[,c(4,3)]
+head(groceryAssoc)
+
+write.csv(groceryAssoc, file = tmp <- file(), row.names = FALSE)
+txn <- read.transactions(tmp, rm.duplicates = FALSE,
+                         format = "single", sep = ',', cols = c(1,2))
+close(tmp)
+
+# Create set of rules
+rules <- apriori(txn, parameter = list(supp = 0.01, conf = 0.05, target = 'rules'))
+````
